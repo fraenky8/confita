@@ -2,6 +2,7 @@ package confita
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -262,18 +263,31 @@ func (f *FieldConfig) Set(data string) error {
 	return convert(data, f.Value)
 }
 
-var durationType = reflect.TypeOf(time.Duration(0))
+var (
+	durationType       = reflect.TypeOf(time.Duration(0))
+	jsonRawMessageType = reflect.TypeOf(json.RawMessage{})
+)
 
 func convert(data string, value reflect.Value) error {
 	t := value.Type()
-	if t == durationType {
+	switch t {
+	case durationType:
 		d, err := time.ParseDuration(data)
 		if err != nil {
 			return err
 		}
 		value.SetInt(int64(d))
 		return nil
+	case jsonRawMessageType:
+		var b json.RawMessage
+		err := json.Unmarshal([]byte(data), &b)
+		if err != nil {
+			return err
+		}
+		value.SetBytes(b)
+		return nil
 	}
+
 	switch t.Kind() {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(data)
